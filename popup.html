@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>DiveSSI Log Importer</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; width:410px; background:#0a1628; color:#e8f0fe; }
+
+    .header { background:linear-gradient(135deg,#1a3a6b,#0d2244); padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #1e3a6b; }
+    .header-icon { font-size:24px; }
+    .header-text h1 { font-size:13px; font-weight:700; color:#7eb8f7; }
+    .header-text p  { font-size:11px; color:#8899bb; margin-top:1px; }
+
+    .tabs { display:flex; border-bottom:1px solid #1e3a6b; }
+    .tab { flex:1; padding:8px; text-align:center; font-size:11px; font-weight:600; cursor:pointer; color:#6678aa; border-bottom:2px solid transparent; transition:all 0.15s; }
+    .tab.active { color:#7eb8f7; border-bottom-color:#5b9bd5; }
+    .tab:hover:not(.active) { color:#c8d8f0; }
+
+    .error-bar {
+      background: #2a0f0f; border-bottom: 2px solid #c03030;
+      color: #ff8080; font-size: 11px; padding: 7px 14px;
+      font-weight: 500; line-height: 1.4;
+    }
+
+    .panel { display:none; padding:14px 16px; }
+    .panel.active { display:block; }
+
+    /* Drop zone */
+    .drop-zone { border:2px dashed #2a4a8a; border-radius:10px; padding:20px; text-align:center; cursor:pointer; transition:all 0.2s; background:rgba(30,58,107,0.3); }
+    .drop-zone:hover, .drop-zone.drag-over { border-color:#5b9bd5; background:rgba(30,58,107,0.6); }
+    .drop-zone .icon { font-size:28px; margin-bottom:6px; }
+    .drop-zone p { font-size:12px; color:#8899bb; line-height:1.5; }
+    .drop-zone p strong { color:#7eb8f7; }
+    #file-input { display:none; }
+
+    .info-box { margin-top:8px; padding:8px 10px; background:rgba(91,155,213,0.1); border:1px solid rgba(91,155,213,0.25); border-radius:7px; font-size:10px; color:#8899bb; line-height:1.5; }
+    .info-box code { color:#7eb8f7; font-size:10px; word-break:break-all; }
+    .info-box a { color:#5b9bd5; cursor:pointer; text-decoration:underline; }
+
+    .slabel { display:block; font-size:10px; font-weight:600; color:#7eb8f7; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px; }
+    .search-row { display:flex; gap:6px; }
+    .search-input { flex:1; padding:6px 9px; background:rgba(10,22,40,0.6); border:1px solid #2a4a8a; border-radius:6px; color:#c8d8f0; font-size:12px; outline:none; }
+    .search-input:focus { border-color:#5b9bd5; }
+    .btn-sm { padding:6px 10px; background:#1a3a6b; border:1px solid #2a4a8a; border-radius:6px; color:#7eb8f7; font-size:11px; cursor:pointer; white-space:nowrap; }
+    .btn-sm:hover:not(:disabled) { background:#1e4a8b; }
+    .btn-sm:disabled { opacity:0.5; cursor:not-allowed; }
+    .select-input { width:100%; padding:6px 9px; background:rgba(10,22,40,0.6); border:1px solid #2a4a8a; border-radius:6px; color:#c8d8f0; font-size:12px; outline:none; }
+
+    .result-list { margin-top:6px; max-height:110px; overflow-y:auto; border:1px solid #1e3a6b; border-radius:7px; display:none; }
+    .result-list::-webkit-scrollbar { width:4px; }
+    .result-list::-webkit-scrollbar-thumb { background:#2a4a8a; border-radius:2px; }
+    .result-item { padding:7px 10px; cursor:pointer; font-size:12px; border-bottom:1px solid #0f2040; display:flex; justify-content:space-between; align-items:center; }
+    .result-item:last-child { border-bottom:none; }
+    .result-item:hover { background:#1a3a6b; }
+    .rid { color:#5b9bd5; font-size:10px; }
+    .selected-pill { margin-top:5px; padding:5px 9px; background:rgba(30,107,184,0.2); border:1px solid #1e6bb8; border-radius:6px; font-size:11px; color:#7eb8f7; display:none; }
+
+    /* Dive list */
+    .list-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; }
+    .dive-count { background:#1e3a6b; color:#7eb8f7; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; }
+    .list-toolbar { display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-bottom:6px; }
+    .filter-btn { padding:3px 8px; border-radius:5px; font-size:10px; font-weight:600; cursor:pointer; border:1px solid #2a4a8a; background:#1a2a4a; color:#8899bb; white-space:nowrap; }
+    .filter-btn.active { background:#1e4a8b; color:#7eb8f7; border-color:#5b9bd5; }
+    .toggle-all-btn { padding:3px 8px; border-radius:5px; font-size:10px; cursor:pointer; border:1px solid #2a4a8a; background:#1a2a4a; color:#8899bb; margin-left:auto; }
+    .toggle-all-btn:hover { background:#1e3a6b; color:#c8d8f0; }
+
+    .dive-scroll { max-height:190px; overflow-y:auto; border:1px solid #1e3a6b; border-radius:7px; background:rgba(10,22,40,0.6); }
+    .dive-scroll::-webkit-scrollbar { width:4px; }
+    .dive-scroll::-webkit-scrollbar-thumb { background:#2a4a8a; border-radius:2px; }
+    .dive-item { display:flex; align-items:center; padding:6px 10px; border-bottom:1px solid #0f2040; font-size:11px; gap:8px; }
+    .dive-item:last-child { border-bottom:none; }
+    .dive-item.imported { opacity:0.4; }
+    .dive-num { color:#7eb8f7; font-weight:700; min-width:26px; }
+    .dive-info { flex:1; color:#c8d8f0; line-height:1.4; }
+    .dive-info small { color:#6678aa; font-size:10px; }
+    .dive-check { cursor:pointer; accent-color:#5b9bd5; }
+    .dive-status { font-size:13px; min-width:16px; text-align:center; }
+    .status-pending  { color:#4a6a9a; }
+    .status-imported { color:#40c080; }
+    .status-running  { color:#f0a020; animation:spin 1s linear infinite; display:inline-block; }
+    .status-done     { color:#40c080; }
+    .status-error    { color:#e05050; }
+    .status-skipped  { color:#404060; }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+    .warn { margin-top:8px; padding:7px 10px; background:rgba(240,160,32,0.1); border:1px solid rgba(240,160,32,0.3); border-radius:7px; font-size:11px; color:#f0c060; }
+
+    .controls { margin-top:10px; display:flex; gap:6px; }
+    .btn { flex:1; padding:9px 12px; border:none; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-primary { background:linear-gradient(135deg,#1e6bb8,#1455a0); color:white; }
+    .btn-primary:hover:not(:disabled) { background:linear-gradient(135deg,#2a7acc,#1a65b0); }
+    .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+    .btn-secondary { background:#1a2a4a; color:#8899bb; border:1px solid #2a4a8a; flex:0 0 auto; padding:9px 10px; }
+    .btn-secondary:hover { background:#1e3a6b; color:#c8d8f0; }
+
+    .progress-bar { margin-top:8px; display:none; height:3px; background:#1a2a4a; border-radius:2px; overflow:hidden; }
+    .progress-fill { height:100%; background:linear-gradient(90deg,#1e6bb8,#40c0f0); transition:width 0.3s; width:0%; }
+    .status-bar { margin-top:7px; font-size:11px; color:#6678aa; text-align:center; min-height:14px; }
+    .status-bar.success { color:#40c080; }
+    .status-bar.error   { color:#e05050; }
+    .status-bar.warning { color:#f0a020; }
+
+    .setting-row { margin-bottom:12px; }
+    .setting-note { font-size:10px; color:#6678aa; margin-top:4px; }
+    .divider { height:1px; background:#1e3a6b; margin:10px 0; }
+    .btn-danger { width:100%; padding:8px; background:#2a1a1a; color:#e05050; border:1px solid #4a2a2a; border-radius:6px; font-size:11px; cursor:pointer; margin-top:4px; }
+    .btn-danger:hover { background:#3a2020; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🤿</div>
+  <div class="header-text">
+    <h1>DiveSSI Log Importer</h1>
+    <p>Shearwater → My Dive Log</p>
+  </div>
+</div>
+
+<div class="error-bar" id="error-bar" style="display:none"></div>
+<div class="tabs">
+  <div class="tab active" data-tab="import">Import</div>
+  <div class="tab" data-tab="settings">Settings</div>
+</div>
+
+<!-- IMPORT PANEL -->
+<div class="panel active" id="panel-import">
+
+  <div id="step-load">
+    <div class="drop-zone" id="drop-zone">
+      <div class="icon">📂</div>
+      <p><strong>Click to select</strong> or drag & drop<br>your Shearwater CSV export</p>
+      <input type="file" id="file-input" accept=".csv" />
+    </div>
+    <div class="info-box">
+      💡 <strong>For richer data</strong> (site names, buddy, gas, depth), use the Python converter first:<br>
+      <code>python shearwater_db_to_csv.py</code><br>
+      DB path: <code>AppData\LocalLow\Shearwater Research\Shearwater\users\&lt;email&gt;\dive_data.db</code>
+    </div>
+  </div>
+
+  <div id="step-configure" style="display:none">
+
+    <div class="setting-row">
+      <span class="slabel">Default Dive Site <span style="color:#6678aa;font-weight:400;text-transform:none;letter-spacing:0">(applied to all dives unless set per-dive)</span></span>
+      <div class="search-row">
+        <input type="text" id="site-search" class="search-input" placeholder="Search SSI dive sites…"/>
+        <button class="btn-sm" id="btn-site-search">Search</button>
+      </div>
+      <div class="result-list" id="site-results"></div>
+      <div class="selected-pill" id="selected-site">✓ <span id="selected-site-name"></span> <a id="clear-site" style="color:#e05050;margin-left:6px;cursor:pointer">✕</a></div>
+      <div class="setting-note" id="site-debug" style="color:#e05050;display:none"></div>
+    </div>
+
+    <div class="setting-row">
+      <span class="slabel">Default Dive Buddy</span>
+      <div class="search-row">
+        <select class="select-input" id="buddy-select"><option value="">— Select buddy —</option></select>
+        <button class="btn-sm" id="btn-load-buddies">Load</button>
+      </div>
+      <input type="text" id="buddy-manual" class="search-input" placeholder="Or type name manually…" style="margin-top:5px"/>
+    </div>
+
+    <div class="setting-row">
+      <span class="slabel">Default Training Center</span>
+      <div class="search-row">
+        <select class="select-input" id="center-select"><option value="">— Select center —</option></select>
+        <button class="btn-sm" id="btn-load-centers">Load</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Dive list -->
+    <div class="list-header">
+      <span class="slabel" style="margin:0">Dives</span>
+      <span class="dive-count" id="dive-count">0</span>
+    </div>
+
+    <div class="list-toolbar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="pending">Pending</button>
+      <button class="filter-btn" data-filter="imported">Imported</button>
+      <button class="btn-sm" id="btn-scan-log" title="Scan your DiveSSI log to auto-untick already logged dives">🔍 Scan Log</button>
+      <button class="toggle-all-btn" id="btn-toggle-all">Untick All</button>
+    </div>
+
+    <div class="dive-scroll" id="dive-scroll"></div>
+
+    <div class="warn" id="warn-box">
+      ⚠️ Keep the DiveSSI Add Dive tab open. A banner will pause for site selection on each dive.
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="btn-reset" title="Load a different file">↺</button>
+      <button class="btn btn-primary" id="btn-import">Import Selected</button>
+    </div>
+
+    <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="status-bar" id="status-bar"></div>
+  </div>
+
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="panel" id="panel-settings">
+  <div class="setting-row">
+    <span class="slabel">Import History</span>
+    <p class="setting-note" id="history-count">Loading…</p>
+    <button class="btn-danger" id="btn-clear-history">🗑 Clear Import History</button>
+    <p class="setting-note" style="margin-top:6px">Tracks imported dives so you don't re-import them accidentally.</p>
+  </div>
+  <div class="divider"></div>
+  <div class="setting-row">
+    <span class="slabel">Delay Between Dives (ms)</span>
+    <input type="number" id="delay-input" class="search-input" value="2000" min="500" max="10000" step="500"/>
+    <p class="setting-note">Default: 2000ms. Increase if the form loads slowly.</p>
+  </div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

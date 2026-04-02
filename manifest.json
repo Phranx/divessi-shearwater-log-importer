@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "DiveSSI Log Importer",
+  "version": "0.0.8",
+  "description": "Import Shearwater dive logs into DiveSSI My Dive Log",
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": ["https://my.divessi.com/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://my.divessi.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+}
