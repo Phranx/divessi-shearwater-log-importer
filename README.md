@@ -12,6 +12,12 @@ Imports Shearwater dive computer CSV logs into DiveSSI My Dive Log
 
 ## Usage
 
+# Python Script
+For a richer experience, install Python and use the 'shearwater_db_to_csv.py' to extract the complete Dive data from your 'dive_data.db' file and import that.
+1. Install Python (https://www.python.org/downloads/).
+2. Run the command 'python shearwater_db_to_csv.py path/to/dive_data.db'
+
+# Plugin
 1. Log into **https://my.divessi.com** in Chrome
 2. Navigate to **My Dive Log → Add** (keep this tab open)
 3. Click the extension icon in the toolbar
@@ -38,18 +44,6 @@ The extension will:
 | Start/End CNS %      | Notes                   |
 | Surface Interval     | Notes                   |
 
-## Troubleshooting
-
-**"Could not find submit button"** — The DiveSSI form uses JavaScript rendering.
-Open DevTools on the add-dive page, go to Console, and run:
-
-```js
-document.querySelectorAll('input, select, textarea, button').forEach(el => {
-  console.log(el.tagName, el.name, el.type, el.placeholder, el.textContent.trim().slice(0, 40))
-})
-```
-
-Share the output to help map fields correctly.
 
 **Import stops mid-way** — The page may have logged you out. Re-login and resume
 from where it stopped by removing already-imported dives from the CSV.
